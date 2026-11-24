@@ -1,70 +1,120 @@
-"""Fonctions IFS reconstituées à partir de l'annexe du rapport.
+"""Fonctions communes pour la génération déterministe de fractales par IFS.
 
-Corrections limitées : indentation, validation et sauvegarde optionnelle.
+Les transformations sont issues de l'annexe du rapport. Les fonctions de
+visualisation et de progression par étapes ont été adaptées pour ce dépôt.
 """
 from pathlib import Path
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 def rotation(point, angle):
-    """Tourne un point autour de l'origine d'un angle exprimé en degrés."""
-    teta = np.radians(angle)
-    rot_matrix = np.array([
-        [np.cos(teta), -np.sin(teta)],
-        [np.sin(teta), np.cos(teta)],
+    """Tourne un point autour de l'origine (angle en degrés)."""
+    theta = np.radians(angle)
+    matrice = np.array([
+        [np.cos(theta), -np.sin(theta)],
+        [np.sin(theta), np.cos(theta)],
     ])
-    return rot_matrix @ np.asarray(point, dtype=float)
+    return matrice @ np.asarray(point, dtype=float)
 
 
 def transformation(fig, ang, translation, fac_contr):
-    """Applique une rotation, contraction et translation aux points d'une figure."""
-    fig_transforme = []
+    """Applique successivement une rotation, une contraction et une translation."""
+    resultat = []
     for point in fig:
-        fig_rot = rotation(point, ang)
-        fig_contr = fig_rot * fac_contr
-        fig_transl = fig_contr + translation
-        fig_transforme.append(fig_transl)
-    return np.array(fig_transforme)
+        point_tourne = rotation(point, ang)
+        resultat.append(point_tourne * fac_contr + translation)
+    return np.asarray(resultat)
+
+
+def etapes_fractale(fig_initial, transformations, nbre_iter):
+    """Produit la figure à l'étape 0, puis après chaque itération de l'IFS."""
+    if nbre_iter < 0:
+        raise ValueError("nbre_iter doit être positif ou nul")
+    figures = [np.asarray(fig_initial, dtype=float)]
+    yield 0, figures
+    for numero in range(1, nbre_iter + 1):
+        nouvelles = []
+        for figure in figures:
+            for matrice, translation in transformations:
+                nouvelles.append(figure @ matrice.T + translation)
+        figures = nouvelles
+        yield numero, figures
 
 
 def gen_fractal(fig_initial, transform, nbre_iter):
-    """Génère toutes les copies de la figure après nbre_iter itérations.
+    """Renvoie uniquement la figure obtenue après nbre_iter itérations."""
+    resultat = None
+    for _, resultat in etapes_fractale(fig_initial, transform, nbre_iter):
+        pass
+    return resultat
 
-    Le nombre de copies croît comme len(transform) ** nbre_iter.
-    """
-    if nbre_iter < 0:
-        raise ValueError("nbre_iter doit être positif ou nul")
-    figure1 = np.asarray(fig_initial, dtype=float)
-    fig_actuel = [figure1]
-    for _ in range(nbre_iter):
-        figure2 = []
-        for pt in fig_actuel:
-            for A, b in transform:
-                fig_transf = np.array([A @ p + b for p in pt])
-                figure2.append(fig_transf)
-        fig_actuel = figure2
-    return fig_actuel
+
+def dessiner_sur_axes(axe, figures, titre="Fractale", couleur=None):
+    """Dessine une étape sur un axe Matplotlib existant."""
+    axe.clear()
+    if not figures:
+        raise ValueError("La liste des figures est vide")
+    if all(len(figure) == 1 for figure in figures):
+        points = np.asarray([figure[0] for figure in figures])
+        axe.scatter(points[:, 0], points[:, 1], s=0.8,
+                    color=couleur or "green", linewidths=0)
+    else:
+        for figure in figures:
+            pts = np.asarray(figure)
+            # Ferme explicitement les polygones initiaux (3 sommets ou plus).
+            if len(pts) >= 3:
+                pts = np.vstack((pts, pts[0]))
+            axe.plot(pts[:, 0], pts[:, 1],
+                     color=couleur or "black", linewidth=0.8)
+    axe.set_title(titre)
+    axe.set_aspect("equal", adjustable="datalim")
+    axe.axis("off")
 
 
 def fractale(fig, titre="Fractale", fichier=None, couleur=None):
-    """Affiche la fractale et peut enregistrer l'image en PNG."""
-    if not fig:
-        raise ValueError("La liste des figures est vide")
+    """Dessine une fractale et sauvegarde éventuellement une image PNG."""
     image, axe = plt.subplots(figsize=(8, 8))
-    if all(len(f) == 1 for f in fig):
-        x = [f[0][0] for f in fig]
-        y = [f[0][1] for f in fig]
-        axe.scatter(x, y, s=0.2, color=couleur or "green", linewidths=0)
-    else:
-        for f in fig:
-            f = np.asarray(f)
-            axe.plot(f[:, 0], f[:, 1], color=couleur or "black", linewidth=0.5)
-    axe.set_title(titre)
-    axe.set_aspect("equal", adjustable="box")
-    axe.axis("off")
+    dessiner_sur_axes(axe, fig, titre, couleur)
     if fichier is not None:
-        destination = Path(fichier)
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        image.savefig(destination, dpi=160, bbox_inches="tight")
+        chemin = Path(fichier)
+        chemin.parent.mkdir(parents=True, exist_ok=True)
+        image.savefig(chemin, dpi=160, bbox_inches="tight")
     plt.close(image)
+
+
+def animer_fractale(fig_initial, transformations, nbre_iter, titre,
+                    fichier, pause=0.7, afficher=True, couleur=None):
+    """Montre chaque itération dans la même fenêtre et sauvegarde la dernière.
+
+    afficher=False permet de produire l'image finale sans interface graphique.
+    """
+    if pause < 0:
+        raise ValueError("La durée de pause doit être positive ou nulle")
+    if afficher:
+        plt.ion()
+        image, axe = plt.subplots(figsize=(8, 8))
+    else:
+        image = axe = None
+
+    derniere_etape = None
+    for etape, figures in etapes_fractale(fig_initial, transformations, nbre_iter):
+        print(f"{titre} : étape {etape}/{nbre_iter} — {len(figures)} figure(s)", flush=True)
+        derniere_etape = figures
+        if afficher:
+            dessiner_sur_axes(axe, figures, f"{titre} — Étape {etape}/{nbre_iter}", couleur)
+            image.canvas.draw_idle()
+            plt.pause(max(pause, 0.001))
+
+    chemin = Path(fichier)
+    chemin.parent.mkdir(parents=True, exist_ok=True)
+    if afficher:
+        # Enregistre exactement la dernière étape présentée à l'écran.
+        image.savefig(chemin, dpi=160, bbox_inches="tight")
+        print(f"Image finale enregistrée : {chemin}")
+        plt.ioff()
+        plt.show()  # Fenêtre finale maintenue ouverte jusqu'à fermeture.
+    else:
+        fractale(derniere_etape, f"{titre} — Étape {nbre_iter}", chemin, couleur)
+        print(f"Image finale enregistrée : {chemin}")

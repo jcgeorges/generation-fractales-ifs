@@ -4,38 +4,49 @@ Projet universitaire de mathématiques appliquées encadré par **Rodolphe Garbi
 
 ## Présentation
 
-Ce projet étudie la génération de figures fractales à l'aide de **systèmes de fonctions itérées** (*Iterated Function Systems*, IFS). Un IFS est un ensemble fini d'applications contractantes. L'itération de ces transformations permet d'approcher un attracteur, dont l'existence et l'unicité sont justifiées, sous les hypothèses appropriées, par le théorème du point fixe de Banach appliqué à l'espace des compacts muni de la distance de Hausdorff.
+Ce projet étudie la génération de figures fractales à l'aide de **systèmes de fonctions itérées** (*Iterated Function Systems*, IFS). Un IFS est un ensemble fini d'applications contractantes. L'itération de ces transformations permet d'approcher un attracteur. Sous les hypothèses appropriées, son existence et son unicité sont justifiées par le théorème du point fixe de Banach sur l'espace des compacts muni de la distance de Hausdorff.
 
-Le programme utilise des transformations affines du plan de la forme `w(x) = A @ x + b`, avec NumPy pour le calcul matriciel et Matplotlib pour la visualisation.
+Les transformations affines ont la forme `w(x) = A @ x + b` : NumPy effectue les calculs matriciels et Matplotlib représente les étapes de construction.
 
-## Figures et exemples
+## Résultats : images finales
 
-- **Fougère de Barnsley** : transformations affines extraites de l'annexe du rapport.
-- **Figure en forme de feuille** : quatre transformations affines extraites de l'annexe.
-- **Triangle de Sierpiński** : illustration mentionnée dans le rapport ; les définitions manquantes dans l'export Markdown ont été reconstruites et sont signalées dans le code.
+Les figures ci-dessous correspondent à la **dernière itération enregistrée** pour chaque exemple. Elles sont générées automatiquement en lançant les scripts. Les images intermédiaires sont présentées à l'écran pendant l'exécution, mais **seule l'image finale** est enregistrée dans `images/`.
 
-![Triangle de Sierpiński](images/sierpinski.png)
-![Fougère](images/fougere.png)
-![Feuille](images/feuille.png)
+### Triangle de Sierpiński
 
-## Organisation du dépôt
+![Triangle de Sierpiński — dernière itération](images/sierpinski.png)
+
+### Fougère de Barnsley
+
+![Fougère de Barnsley — dernière itération](images/fougere.png)
+
+### Figure en forme de feuille
+
+![Figure en forme de feuille — dernière itération](images/feuille.png)
+
+> **Origine du code :** les matrices de la fougère et de la feuille sont tirées de l'annexe du rapport. Les transformations du triangle de Sierpiński ont été reconstruites, car elles sont manquantes dans l'export Markdown du rapport.
+
+## Structure du dépôt
 
 ```text
-fractales_ifs_github/
-├── ifs.py                 # Fonctions de base : rotation, transformation, génération, tracé
+.
+├── ifs.py                 # Fonctions mathématiques et visualisation progressive
 ├── examples/
-│   ├── sierpinski.py      # Exemple Sierpiński (définitions reconstruites)
+│   ├── sierpinski.py      # Exemple Sierpiński
 │   ├── fougere.py         # Fougère de Barnsley
-│   └── feuille.py         # Figure feuille
-├── images/                # Images générées par les scripts
+│   └── feuille.py         # Figure en forme de feuille
+├── images/
+│   ├── sierpinski.png     # Dernière étape
+│   ├── fougere.png        # Dernière étape
+│   └── feuille.png        # Dernière étape
 ├── requirements.txt
 ├── .gitignore
 └── README.md
 ```
 
-## Installation
+## Installation (Ubuntu / VS Code)
 
-Python 3.10 ou plus récent conseillé.
+Python 3.10 ou version supérieure conseillé.
 
 ```bash
 python -m venv .venv
@@ -43,9 +54,11 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Exécution
+**Pour voir les fenêtres Matplotlib**, exécuter les scripts dans un terminal VS Code sur un ordinateur avec interface graphique. Si l'interface ne s'ouvre pas, vérifier que Matplotlib dispose d'un backend graphique (par exemple TkAgg ou QtAgg), et installer les dépendances graphiques nécessaires.
 
-À la racine du dépôt :
+## Afficher toutes les étapes de construction
+
+Depuis la racine du dépôt :
 
 ```bash
 python examples/sierpinski.py
@@ -53,31 +66,54 @@ python examples/fougere.py
 python examples/feuille.py
 ```
 
-Vous pouvez préciser le nombre d'itérations :
+À chaque exécution :
+
+1. Une fenêtre Matplotlib s'ouvre pour présenter l'étape initiale (**étape 0**).
+2. Le dessin est remplacé successivement par les étapes **1, 2, 3…**.
+3. Le terminal indique l'étape courante et le nombre de figures générées.
+4. **La dernière étape** est sauvegardée dans `images/` puis reste affichée jusqu'à la fermeture de la fenêtre.
+
+L'intervalle entre deux étapes est de **0,8 seconde** par défaut. Vous pouvez l'augmenter avec `--pause` :
 
 ```bash
-python examples/sierpinski.py 7
-python examples/fougere.py 8
-python examples/feuille.py 6
+python examples/sierpinski.py 7 --pause 1.5
+python examples/fougere.py 8 --pause 1
+python examples/feuille.py 6 --pause 1
 ```
 
-Les images sont enregistrées automatiquement dans `images/`. Des bornes pratiques sur les itérations sont prévues car l'algorithme déterministe génère un nombre de figures exponentiel.
+Le premier argument indique le **nombre d'itérations**. Les limites pratiques sont : Sierpiński 8, fougère 9 et feuille 7 itérations. Le nombre de copies croît exponentiellement avec le nombre d'itérations : des valeurs élevées augmentent la durée de calcul et l'utilisation de mémoire.
 
-## Méthodes implémentées
+### Générer uniquement les images finales
 
-- `rotation(point, angle)` : rotation d'un point autour de l'origine (angle en degrés).
-- `transformation(fig, ang, translation, fac_contr)` : rotation, contraction, translation d'une figure.
-- `gen_fractal(fig_initial, transform, nbre_iter)` : itération déterministe de toutes les transformations.
-- `fractale(fig, titre, fichier)` : représentation graphique et export PNG.
+Sur un serveur ou pour reconstruire les images du README sans fenêtre :
 
-## Travail théorique
+```bash
+python examples/sierpinski.py 7 --no-show
+python examples/fougere.py 8 --no-show
+python examples/feuille.py 6 --no-show
+```
 
-Le rapport étudie notamment la distance de Hausdorff, les contractions, le théorème du point fixe et les attracteurs d'IFS. Il présente également les figures de Barnsley, de Koch, de Vicsek et de Sierpiński. **La présence de ces figures dans le rapport ne signifie pas qu'elles disposent toutes d'une implémentation dans ce dépôt.**
+Après la génération, **ajouter les fichiers PNG au dépôt Git** pour que les images s'affichent sur la page GitHub du README. GitHub ne les génère pas lorsqu'il affiche le Markdown : il lit les fichiers présents dans `images/`.
 
-## Provenance et adaptations du code
+## Fonctions principales
 
-Le code est tiré de l'annexe du rapport transmis. Son export Markdown a fait disparaître l'indentation Python et une partie des définitions. Les fichiers ont été réindentés et séparés en modules pour pouvoir s'exécuter. Des sauvegardes PNG, des contrôles élémentaires et des bornes sur le nombre d'itérations ont été ajoutés. Les définitions manquantes de Sierpiński ont été reconstruites : elles ne sont **pas** une transcription littérale du rapport. Aucune version probabiliste (« chaos game ») n'a été extraite du document.
+- `rotation(point, angle)` : rotation autour de l'origine (degrés).
+- `transformation(fig, ang, translation, fac_contr)` : rotation, contraction, translation.
+- `etapes_fractale(fig_initial, transformations, nbre_iter)` : itérateur renvoyant les figures à chaque étape.
+- `gen_fractal(fig_initial, transform, nbre_iter)` : résultat de la dernière étape uniquement.
+- `dessiner_sur_axes(...)` : dessin sur un axe Matplotlib.
+- `animer_fractale(...)` : animation étape par étape et sauvegarde de la dernière image.
+
+## Fondements théoriques
+
+Le rapport étudie la distance de Hausdorff, les contractions, le théorème du point fixe de Banach et les attracteurs de systèmes de fonctions itérées. Il présente également les figures de Koch et de Vicsek, sans que ces dernières soient implémentées dans le dépôt.
+
+## Provenance et limites
+
+Le rapport transmis présente une annexe Python dont l'indentation a disparu à l'export. Les scripts ont été reformatés, séparés en fichiers et adaptés à une visualisation progressive. Les définitions de Sierpiński ont été reconstruites : elles ne constituent pas une transcription littérale. Aucune version probabiliste de type *chaos game* n'a été récupérée dans l'annexe.
+
+Les figures de ce dépôt sont générées par une méthode **déterministe et exhaustive**. Pour augmenter fortement le nombre d'itérations, une méthode probabiliste serait plus adaptée.
 
 ## Compétences mobilisées
 
-Mathématiques appliquées, transformations affines, calcul matriciel, algorithmique, Python, NumPy et Matplotlib.
+Mathématiques appliquées, transformations affines, algorithmique, calcul matriciel, Python, NumPy et Matplotlib.
